@@ -1,0 +1,28 @@
+{% extends "dasar.html" %}
+{% block judul %}{{ r.judul }} — ketabonline #{{ r.id }}{% endblock %}
+{% block isi %}
+<p><a href="javascript:history.back()">‹ kembali</a></p>
+<h2 class="ar" style="margin:4px 0">{{ r.judul }}</h2>
+<p class="ar">{{ r.pengarang or '' }}</p>
+<p><span class="lencana st-{{ r.status }}">{{ label[r.status] }}</span>
+  · ketabonline #{{ r.id }} · <a href="https://ketabonline.com/ar/books/{{ r.id }}" target="_blank" rel="noopener">buka di ketabonline</a></p>
+
+<table style="width:auto">
+  <tr><th>Sumber</th><td class="ar">{{ r.sumber or '' }}</td></tr>
+  <tr><th>Kategori</th><td class="ar">{{ r.kategori or '' }}</td></tr>
+  <tr><th>Bahasa</th><td>{{ r.bahasa }}</td></tr>
+  <tr><th>Halaman / jilid</th><td>{{ r.halaman }} / {{ r.jilid }}</td></tr>
+  <tr><th>Ukuran ZIP</th><td>{{ r.zip_mb }} MB</td></tr>
+  <tr><th>Aktif</th><td>{{ 'ya' if r.aktif else 'tidak' }}</td></tr>
+  <tr><th>Diperbarui</th><td>{{ r.diperbarui }}</td></tr>
+  <tr><th>Syamilah 4</th><td>{% if r.s4_id %}#{{ r.s4_id }} ({{ r.s4_cara }}{% if r.s4_pengarang_sama == 0 %}, pengarang beda{% endif %})
+    · keputusan: {{ r.s4_keputusan or '-' }}<div class="ar">{{ r.s4_judul }} — {{ r.s4_pengarang or '' }}</div>{% else %}tidak ditemukan{% endif %}</td></tr>
+  <tr><th>GoldenShamela</th><td>{% if r.golden_id %}#{{ r.golden_id }} ({{ r.golden_cara }}{% if r.golden_pengarang_sama == 0 %}, pengarang beda{% endif %})
+    {% if r.golden_dup_s4 %}· dup Syamilah 4 #{{ r.golden_dup_s4 }}{% endif %}<div class="ar">{{ r.golden_judul }} — {{ r.golden_pengarang or '' }}</div>{% else %}tidak ditemukan{% endif %}</td></tr>
+</table>
+
+{% if r.deskripsi %}<h3>Deskripsi</h3><p class="ar">{{ r.deskripsi }}</p>{% endif %}
+{% if r.bibliografi %}<h3>Bibliografi</h3><pre class="ar">{{ r.bibliografi }}</pre>{% endif %}
+
+<details><summary>Metadata mentah dari API</summary><pre dir="auto">{{ mentah }}</pre></details>
+{% endblock %}

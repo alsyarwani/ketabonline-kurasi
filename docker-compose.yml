@@ -1,0 +1,42 @@
+# ketabonline-kurasi — terpisah dari stack "shamela" (tidak berbagi volume/database).
+#
+#   docker compose build
+#   docker compose run --rm alat cocok              # hasil.db + hasil.csv di folder data
+#   docker compose run --rm alat sensus             # sensus ulang / lanjutkan (butuh internet)
+#   docker compose up -d gui                        # GUI di jaringan jalurgateway, nama layanan ketabonline-gui:8000
+#
+# Folder data & Excel bisa diganti lewat .env (KETAB_DATA_HOST, KETAB_EXCEL_HOST). KETAB_UID/GID = pemilik folder
+# data di host (bawaan 1000), supaya file hasil bisa ditulis dan tetap milik user biasa.
+# GUI TANPA LOGIN: pasang autentikasi di gateway sebelum membuka rutenya ke luar.
+
+x-umum: &umum
+  build: .
+  image: ketabonline-kurasi:0.1.0
+  environment:
+    KETAB_DATA: /data
+    KETAB_EXCEL: /excel/Seleksi_Buku_Syamilah4_v4.xlsx
+    KETAB_GOLDEN: /data/golden.csv
+
+services:
+  gui:
+    <<: *umum
+    container_name: ketabonline-gui
+    command: ["gui"]
+    restart: unless-stopped
+    volumes:
+      - ${KETAB_DATA_HOST:-/disk6/shamela/ketabonline}:/data:ro
+    networks: [jalurgateway]
+
+  alat:
+    <<: *umum
+    profiles: ["alat"]
+    user: "${KETAB_UID:-1000}:${KETAB_GID:-1000}"
+    command: ["cocok"]
+    volumes:
+      - ${KETAB_DATA_HOST:-/disk6/shamela/ketabonline}:/data
+      - ${KETAB_EXCEL_HOST:-/disk6/shamela/excel}:/excel:ro
+    network_mode: bridge
+
+networks:
+  jalurgateway:
+    external: true

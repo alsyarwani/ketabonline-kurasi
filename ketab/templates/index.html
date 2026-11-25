@@ -1,0 +1,73 @@
+{% extends "dasar.html" %}
+{% block isi %}
+<details {% if not a %}open{% endif %}>
+  <summary><b>Ringkasan</b> — {{ info.get('jumlah_ketab') }} kitab ketabonline · dicocokkan {{ info.get('waktu') }}
+    · Syamilah 4: {{ info.get('jumlah_s4') }} · GoldenShamela: {{ info.get('jumlah_golden') }}</summary>
+  <table class="ringkas" style="width:auto;margin-top:8px">
+    <tr><th>Sumber</th>{% for s in status %}<th>{{ label[s] }}</th>{% endfor %}<th>Total</th></tr>
+    {% for sumber_, isi in tabel|dictsort %}
+    <tr><td class="ar">{{ sumber_ }}</td>
+      {% set ns = namespace(n=0) %}
+      {% for s in status %}{% set v = isi.get(s) %}
+        <td class="n">{% if v %}<a href="{{ url_for('beranda', sumber=sumber_ if sumber_ != '(tanpa sumber)' else '', status=s) }}">{{ '{:,}'.format(v[0]) }}</a>
+          <span class="kecil">{{ '{:,}'.format(v[1]) }} hlm</span>{% set ns.n = ns.n + v[0] %}{% endif %}</td>
+      {% endfor %}
+      <td class="n"><b>{{ '{:,}'.format(ns.n) }}</b></td></tr>
+    {% endfor %}
+  </table>
+  <p class="kecil">«Mirip» = hanya cocok setelah keterangan kurung/ekor judul dibuang, atau judul sama tetapi pengarang berbeda.
+    Pencocokan memakai judul ternormalisasi (harakat, hamzah, ى/ي, ة/ه diabaikan) — sama dengan ekstraktor-epub.</p>
+</details>
+
+<form class="saring" method="get">
+  <label>Cari judul / pengarang / ID<input name="q" value="{{ a.get('q','') }}" size="28" dir="auto"></label>
+  <label>Status<select name="status"><option value="">semua</option>
+    {% for s in status %}<option value="{{ s }}" {% if a.get('status')==s %}selected{% endif %}>{{ label[s] }}</option>{% endfor %}</select></label>
+  <label>Sumber<select name="sumber"><option value="">semua</option>
+    {% for s in sumber %}<option value="{{ s }}" {% if a.get('sumber')==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Kategori memuat<input name="kategori" value="{{ a.get('kategori','') }}" size="14" dir="auto"></label>
+  <label>Bahasa<select name="bahasa"><option value="">semua</option>
+    {% for s in bahasa %}<option value="{{ s }}" {% if a.get('bahasa')==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Min. halaman<input name="min_hal" value="{{ a.get('min_hal','') }}" size="5"></label>
+  <label>Aktif<select name="aktif"><option value="">semua</option>
+    <option value="1" {% if a.get('aktif')=='1' %}selected{% endif %}>ya</option>
+    <option value="0" {% if a.get('aktif')=='0' %}selected{% endif %}>tidak</option></select></label>
+  <label>Urut<select name="urut">{% for u in urut %}<option value="{{ u }}" {% if a.get('urut','id')==u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select></label>
+  <button type="submit">Saring</button>
+  <a class="tombol lain" href="{{ url_for('beranda') }}">Hapus saringan</a>
+  <a class="tombol lain" href="{{ tautan('ekspor', hal='') }}">Ekspor Excel ({{ '{:,}'.format(total) }})</a>
+</form>
+
+<div class="halaman">
+  <span>{{ '{:,}'.format(total) }} kitab · halaman {{ hal }} dari {{ ((total - 1) // per + 1) if total else 1 }}</span>
+  {% if hal > 1 %}<a href="{{ tautan(hal=hal-1) }}">‹ sebelumnya</a>{% endif %}
+  {% if hal * per < total %}<a href="{{ tautan(hal=hal+1) }}">berikutnya ›</a>{% endif %}
+</div>
+
+<table>
+  <tr><th>ID</th><th>Judul</th><th>Pengarang</th><th>Sumber</th><th>Kategori</th><th>Hlm</th><th>Jld</th><th>MB</th>
+    <th>Status</th><th>Syamilah 4</th><th>GoldenShamela</th></tr>
+  {% for r in baris %}
+  <tr>
+    <td class="n"><a href="{{ url_for('detail', kid=r.id) }}">{{ r.id }}</a>{% if r.aktif == 0 %}<br><span class="kecil">nonaktif</span>{% endif %}</td>
+    <td class="ar">{{ r.judul }}</td>
+    <td class="ar">{{ r.pengarang or '' }}</td>
+    <td class="ar kecil">{{ r.sumber or '' }}</td>
+    <td class="ar kecil">{{ r.kategori or '' }}</td>
+    <td class="n">{{ r.halaman or '' }}</td>
+    <td class="n">{{ r.jilid or '' }}</td>
+    <td class="n">{{ r.zip_mb or '' }}</td>
+    <td><span class="lencana st-{{ r.status }}">{{ label[r.status] }}</span></td>
+    <td>{% if r.s4_id %}<span class="kecil">#{{ r.s4_id }} · {{ r.s4_cara }}{% if r.s4_pengarang_sama == 0 %} · pengarang beda{% endif %}{% if r.s4_keputusan %} · {{ r.s4_keputusan }}{% endif %}</span>
+      <div class="ar">{{ r.s4_judul }}</div>{% endif %}</td>
+    <td>{% if r.golden_id %}<span class="kecil">#{{ r.golden_id }} · {{ r.golden_cara }}{% if r.golden_pengarang_sama == 0 %} · pengarang beda{% endif %}</span>
+      <div class="ar">{{ r.golden_judul }}</div>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<div class="halaman">
+  {% if hal > 1 %}<a href="{{ tautan(hal=hal-1) }}">‹ sebelumnya</a>{% endif %}
+  {% if hal * per < total %}<a href="{{ tautan(hal=hal+1) }}">berikutnya ›</a>{% endif %}
+</div>
+{% endblock %}
