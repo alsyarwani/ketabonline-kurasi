@@ -13,6 +13,7 @@ Terpisah dari stack `shamela` (shamela-kurasi): tidak berbagi volume maupun data
 |---|---|
 | `ketab/sensus.py` | tarik metadata `books`, `categories`, `authors` dari API ketabonline (item APA ADANYA → `*.jsonl`), bisa dilanjutkan |
 | `ketab/cocok.py` | bandingkan judul (dinormalisasi seperti ekstraktor-epub) → `hasil.db` (SQLite) + `hasil.csv` |
+| `ketab/unduh.py` | unduh `{id}.data.zip` terpilih (status/sumber/daftar ID) ke `zip/<NNN>/`, lewati yang sudah ada, simpan versi lama |
 | `ketab/gui.py` | GUI Flask: ringkasan sumber × status, saringan, detail kitab, ekspor Excel |
 | `jalankan-server.sh` | pemasangan sekali jalan di server (repo, ekspor golden, build, cocok, GUI) |
 
@@ -48,6 +49,21 @@ docker compose run --rm alat cocok        # ulangi setelah Excel/golden/sensus b
 docker compose up -d gui                  # layanan ketabonline-gui:8000 di jaringan jalurgateway
 docker compose run --rm alat sensus       # sensus ulang/lanjutkan (butuh internet; ±20 menit untuk 30 rb kitab)
 ```
+
+### Unduh isi kitab
+
+```bash
+docker compose run --rm alat unduh --perkiraan                       # status 'baru' (bawaan): jumlah, MB, waktu
+docker compose run --rm alat unduh --status baru,mirip --perkiraan
+docker compose run -d --name ketabonline-unduh alat unduh --status baru   # jalan di latar belakang
+docker logs -f ketabonline-unduh
+docker compose run --rm alat unduh --daftar /data/pilihan.xlsx       # ID dari Ekspor Excel GUI (kolom id)
+```
+
+Arsip: `zip/<NNN>/<id>.data.zip` (NNN = tiga digit terakhir ID) + catatan `unduhan.jsonl`. Hanya ditambah: yang sudah
+terunduh dengan `updated_at` sama dilewati; bila `updated_at` berubah, file lama disimpan sebagai
+`<id>.data.<updated_at>.zip`. ZIP diperiksa (utuh, satu `.json` yang valid) sebelum disimpan. Bisa dihentikan dan
+dijalankan ulang kapan saja; 404 dicatat dan dicoba lagi di putaran berikutnya.
 
 Ekspor golden secara manual:
 

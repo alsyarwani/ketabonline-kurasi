@@ -3,6 +3,7 @@
 #   docker compose build
 #   docker compose run --rm alat cocok              # hasil.db + hasil.csv di folder data
 #   docker compose run --rm alat sensus             # sensus ulang / lanjutkan (butuh internet)
+#   docker compose run --rm alat unduh --perkiraan  # isi kitab berstatus baru: jumlah & ukuran dulu
 #   docker compose up -d gui                        # GUI di jaringan jalurgateway, nama layanan ketabonline-gui:8000
 #
 # Folder data & Excel bisa diganti lewat .env (KETAB_DATA_HOST, KETAB_EXCEL_HOST). KETAB_UID/GID = pemilik folder
@@ -11,7 +12,7 @@
 
 x-umum: &umum
   build: .
-  image: ketabonline-kurasi:0.1.0
+  image: ketabonline-kurasi:0.2.0
   environment:
     KETAB_DATA: /data
     KETAB_EXCEL: /excel/Seleksi_Buku_Syamilah4_v4.xlsx
