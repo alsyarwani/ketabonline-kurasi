@@ -12,7 +12,7 @@
 
 x-umum: &umum
   build: .
-  image: ketabonline-kurasi:0.2.0
+  image: ketabonline-kurasi:0.2.1
   environment:
     KETAB_DATA: /data
     KETAB_EXCEL: /excel/Seleksi_Buku_Syamilah4_v4.xlsx

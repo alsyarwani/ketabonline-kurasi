@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 POLA_URL = "https://s2.ketabonline.com/books/{id}/{id}.data.zip"
+SELESAI = ("ok", "json_rusak")   # sudah diarsipkan; diulang hanya bila updated_at berubah
 
 
 def berkas(data: Path, kid: int) -> Path:
@@ -82,8 +83,12 @@ def catatan(data: Path) -> dict[int, dict]:
     return hasil
 
 
-def periksa_zip(isi: bytes) -> str:
-    """Kembalikan nama file .json di dalam ZIP; lempar ValueError bila rusak."""
+def periksa_zip(isi: bytes) -> tuple[str, str | None]:
+    """(nama .json di dalam ZIP, masalah JSON atau None). Lempar ValueError bila ZIP-nya sendiri rusak.
+
+    JSON yang tidak bisa di-parse BUKAN alasan menolak: sebagian kitab raksasa memang tersimpan rusak di server
+    ketabonline (terpotong / escape \\u cacat, selalu di posisi yang sama). ZIP tetap diarsipkan dengan tanda
+    json_rusak agar halaman yang utuh bisa diselamatkan parser nanti."""
     try:
         z = zipfile.ZipFile(io.BytesIO(isi))
     except zipfile.BadZipFile as e:
@@ -94,8 +99,13 @@ def periksa_zip(isi: bytes) -> str:
     nama = [n for n in z.namelist() if n.endswith(".json")]
     if len(nama) != 1:
         raise ValueError(f"isi ZIP tidak terduga: {z.namelist()[:5]}")
-    json.loads(z.read(nama[0]))
-    return nama[0]
+    teks = z.read(nama[0])
+    try:
+        json.loads(teks)
+    except ValueError as e:
+        ekor = teks[-80:].decode("utf-8", "replace")
+        return nama[0], f"{type(e).__name__}: {str(e)[:120]} | panjang {len(teks)} | ekor {ekor!r}"
+    return nama[0], None
 
 
 def _get(url: str, batas_waktu: int = 180) -> bytes:
@@ -104,15 +114,15 @@ def _get(url: str, batas_waktu: int = 180) -> bytes:
 
 
 def perlu(k: dict, lama: dict | None, data: Path) -> bool:
-    return not (lama and lama.get("hasil") == "ok" and lama.get("updated_at") == k["diperbarui"]
+    return not (lama and lama.get("hasil") in SELESAI and lama.get("updated_at") == k["diperbarui"]
                 and berkas(data, k["id"]).is_file())
 
 
 def jalankan(data: Path, daftar: list[dict], jeda: float = 1.5, ambil=_get, cetak=print) -> dict:
     lama = catatan(data)
     antre = [k for k in daftar if perlu(k, lama.get(k["id"]), data)]
-    hitung = {"dipilih": len(daftar), "sudah_ada": len(daftar) - len(antre), "ok": 0, "tidak_ada": 0, "gagal": 0,
-              "byte": 0}
+    hitung = {"dipilih": len(daftar), "sudah_ada": len(daftar) - len(antre), "ok": 0, "json_rusak": 0,
+              "tidak_ada": 0, "gagal": 0, "byte": 0}
     cetak(f"{len(daftar)} kitab dipilih, {hitung['sudah_ada']} sudah terunduh, {len(antre)} akan diunduh "
           f"(±{sum(k['zip_mb'] for k in antre):.0f} MB)")
     with (data / "unduhan.jsonl").open("a", encoding="utf-8") as log:
@@ -123,7 +133,7 @@ def jalankan(data: Path, daftar: list[dict], jeda: float = 1.5, ambil=_get, ceta
             for coba in range(4):
                 try:
                     isi = ambil(k["url"])
-                    periksa_zip(isi)
+                    _, masalah = periksa_zip(isi)
                     tujuan.parent.mkdir(parents=True, exist_ok=True)
                     if tujuan.exists():   # versi lama: simpan, jangan ditimpa
                         cap = re.sub(r"\D", "", str((lama.get(k["id"]) or {}).get("updated_at") or "lama"))
@@ -131,8 +141,11 @@ def jalankan(data: Path, daftar: list[dict], jeda: float = 1.5, ambil=_get, ceta
                     sementara = tujuan.with_suffix(".zip.sebagian")
                     sementara.write_bytes(isi)
                     sementara.rename(tujuan)
-                    d.update(hasil="ok", byte=len(isi), sha256=hashlib.sha256(isi).hexdigest())
-                    hitung["ok"] += 1
+                    d.update(hasil="json_rusak" if masalah else "ok", byte=len(isi),
+                             sha256=hashlib.sha256(isi).hexdigest())
+                    if masalah:
+                        d["galat"] = masalah
+                    hitung[d["hasil"]] += 1
                     hitung["byte"] += len(isi)
                     break
                 except urllib.error.HTTPError as e:
@@ -149,7 +162,7 @@ def jalankan(data: Path, daftar: list[dict], jeda: float = 1.5, ambil=_get, ceta
             log.write(json.dumps(d, ensure_ascii=False) + "\n")
             log.flush()
             if n % 25 == 0 or n == len(antre):
-                cetak(f"{n}/{len(antre)}  ok {hitung['ok']}  404 {hitung['tidak_ada']}  gagal {hitung['gagal']}  "
+                cetak(f"{n}/{len(antre)}  ok {hitung['ok']}  json_rusak {hitung['json_rusak']}  404 {hitung['tidak_ada']}  gagal {hitung['gagal']}  "
                       f"{hitung['byte'] / 1e6:.0f} MB")
             time.sleep(jeda)
     return hitung

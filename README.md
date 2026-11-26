@@ -62,7 +62,9 @@ docker compose run --rm alat unduh --daftar /data/pilihan.xlsx       # ID dari E
 
 Arsip: `zip/<NNN>/<id>.data.zip` (NNN = tiga digit terakhir ID) + catatan `unduhan.jsonl`. Hanya ditambah: yang sudah
 terunduh dengan `updated_at` sama dilewati; bila `updated_at` berubah, file lama disimpan sebagai
-`<id>.data.<updated_at>.zip`. ZIP diperiksa (utuh, satu `.json` yang valid) sebelum disimpan. Bisa dihentikan dan
+`<id>.data.<updated_at>.zip`. ZIP diperiksa (utuh, berisi satu `.json`) sebelum disimpan. JSON yang rusak dari server (terjadi pada sebagian
+kitab raksasa: terpotong / escape `\u` cacat) tetap diarsipkan dengan `hasil: json_rusak` dan keterangan posisinya,
+untuk diselamatkan parser nanti; tidak diunduh ulang kecuali `updated_at` berubah. Bisa dihentikan dan
 dijalankan ulang kapan saja; 404 dicatat dan dicoba lagi di putaran berikutnya.
 
 Ekspor golden secara manual:

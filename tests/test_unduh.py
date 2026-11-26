@@ -80,3 +80,21 @@ def test_baca_daftar(tmp_path):
     assert unduh.baca_daftar(tmp_path / "d.xlsx") == [5, 1005]
     (tmp_path / "d.txt").write_text("5\n1005, 9")
     assert unduh.baca_daftar(tmp_path / "d.txt") == [5, 1005, 9]
+
+
+def test_json_rusak_tetap_diarsipkan(data):
+    def ambil(url):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr("5.data.json", '{"id": 5, "pages": [{"content": "terpotong')
+        return buf.getvalue()
+
+    daftar = [k for k in unduh.pilih(data, ["baru"], None, None) if k["id"] == 5]
+    h = unduh.jalankan(data, daftar, jeda=0, ambil=ambil, cetak=lambda *_: None)
+    assert h["json_rusak"] == 1 and h["gagal"] == 0 and unduh.berkas(data, 5).is_file()
+    c = json.loads((data / "unduhan.jsonl").read_text().splitlines()[-1])
+    assert c["hasil"] == "json_rusak" and "panjang" in c["galat"]
+    # putaran berikutnya tidak mengunduh ulang
+    panggil = []
+    unduh.jalankan(data, daftar, jeda=0, ambil=lambda u: panggil.append(u) or b"", cetak=lambda *_: None)
+    assert panggil == []
